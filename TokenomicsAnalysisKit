@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract TokenomicsAnalysisKit is Ownable {
+    string public name;
+    string public symbol;
+    uint256 public totalSupply;
+
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    // Events
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, string memory _symbol, uint256 _totalSupply) {
+        name = _name;
+        symbol = _symbol;
+        totalSupply = _totalSupply;
+        balanceOf[msg.sender] = _totalSupply;
+    }
+
+    // Transfer tokens
+    function transfer(address to, uint256 value) external returns (bool) {
+        require(to != address(0), "Transfer to the zero address");
+        require(balanceOf[msg.sender] >= value, "Insufficient balance");
+
+        balanceOf[msg.sender] -= value;
+        balanceOf[to] += value;
+
+        emit Transfer(msg.sender, to, value);
+        return true;
+    }
+
+    // Approve spending tokens
+    function approve(address spender, uint256 value) external returns (bool) {
+        allowance[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+
+    // Transfer tokens from one address to another
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
+        require(to != address(0), "Transfer to the zero address");
+        require(balanceOf[from] >= value, "Insufficient balance");
+        require(allowance[from][msg.sender] >= value, "Insufficient allowance");
+
+        balanceOf[from] -= value;
+        balanceOf[to] += value;
+        allowance[from][msg.sender] -= value;
+
+        emit Transfer(from, to, value);
+        return true;
+    }
+
+    // Mint new tokens (only owner)
+    function mint(address account, uint256 amount) external onlyOwner {
+        require(account != address(0), "Mint to the zero address");
+
+        totalSupply += amount;
+        balanceOf[account] += amount;
+
+        emit Transfer(address(0), account, amount);
+    }
+
+    // Burn tokens (only owner)
+    function burn(address account, uint256 amount) external onlyOwner {
+        require(account != address(0), "Burn from the zero address");
+        require(balanceOf[account] >= amount, "Insufficient balance");
+
+        balanceOf[account] -= amount;
+        totalSupply -= amount;
+
+        emit Transfer(account, address(0), amount);
+    }
+
+    // Withdraw ETH from the contract (only owner)
+    function withdraw() external onlyOwner {
+        payable(owner()).transfer(address(this).balance);
+    }
+
+    // Receive function to accept ETH payments
+    receive() external payable {}
+
+    // Get allowance
+    function getAllowance(address owner, address spender) external view returns (uint256) {
+        return allowance[owner][spender];
+    }
+}
